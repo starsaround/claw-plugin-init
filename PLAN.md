@@ -215,10 +215,10 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
-| 4.1.1 | 单元测试: `validation.ts` 的包名校验 | `[ ]` | |
-| 4.1.2 | 单元测试: `scaffold/copy.ts` 的模板变量替换 | `[ ]` | |
+| 4.1.1 | 单元测试: `validation.ts` 的包名校验 | `[x]` | 13 个测试 |
+| 4.1.2 | 单元测试: `scaffold/copy.ts` 的模板变量替换 | `[x]` | 7 个测试 |
 | 4.1.3 | 单元测试: `scaffold/cleanup.ts` 的依赖安装 | `[ ]` | |
-| 4.1.4 | 集成测试: 完整跑通一次脚手架创建流程 | `[ ]` | |
+| 4.1.4 | 集成测试: 完整跑通一次脚手架创建流程 | `[x]` | 8 个测试 |
 | 4.1.5 | 测试: 生成的项目能通过 `tsc --noEmit` | `[ ]` | |
 | 4.1.6 | 测试: 生成的项目能通过 `openclaw plugins inspect` | `[ ]` | |
 
@@ -235,8 +235,8 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
-| 4.3.1 | GitHub Actions: 自动运行测试 | `[ ]` | |
-| 4.3.2 | GitHub Actions: 自动发布到 npm（tag 触发） | `[ ]` | |
+| 4.3.1 | GitHub Actions: 自动运行测试 | `[x]` | `.github/workflows/test.yml` |
+| 4.3.2 | GitHub Actions: 自动发布到 npm（tag 触发） | `[x]` | `.github/workflows/publish.yml`，需在仓库设置 `NPM_TOKEN` secret |
 | 4.3.3 | GitHub Actions: 自动生成 CHANGELOG | `[ ]` | |
 
 ### 4.4 发布 1.0.0
@@ -278,27 +278,23 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 | 项 | 值 |
 |------|------|
 | **npm 包名** | `claw-plugin-init` |
-| **当前版本** | `0.1.1`（2026-07-09） |
+| **当前版本** | `0.1.5`（2026-07-09） |
 | **CLI 命令** | `npx claw-plugin-init` |
 | **npm 账号** | 用户自有账号，已启用 2FA |
 | **发布方式** | 需要 `--otp` 或 bypass-2fa token |
 
-### npm Token（7 天有效期）
+### npm Token（7 天有效，即将过期）
 
 **生成时间**：2026-07-09  
-**过期时间**：2026-07-16  
-**Token 值**：`YOUR_NPM_TOKEN`  
+**过期时间**：2026-07-16 ⚠️ **需要轮换**  
+**Token 值**：`YOUR_NPM_TOKEN`（即将过期）  
 **类型**：Granular Access Token，bypass 2FA  
 
-**使用方法**：
-
-```bash
-# 方式 1：通过 .npmrc 使用 token
-echo "//registry.npmjs.org/:_authToken=YOUR_NPM_TOKEN" > /tmp/.npmrc-publish
-npm publish --userconfig /tmp/.npmrc-publish
-
-# 方式 2：环境变量
-NPM_TOKEN=YOUR_NPM_TOKEN npm publish
+**操作方法**：
+1. 访问 https://www.npmjs.com/settings/{用户名}/tokens
+2. 生成新的 Granular Access Token（权限：read + write for claw-plugin-init）
+3. 更新下方 Token 值
+4. 同时将新 Token 添加到 GitHub 仓库 Secrets（Settings → Secrets → Actions → `NPM_TOKEN`）
 ```
 
 > ⚠️ Token 过期后需要重新生成。去 https://www.npmjs.com/settings/xxx/tokens 创建新 token。
