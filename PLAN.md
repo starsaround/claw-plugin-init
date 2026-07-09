@@ -236,7 +236,7 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
 | 4.3.1 | GitHub Actions: 自动运行测试 | `[x]` | `.github/workflows/test.yml` |
-| 4.3.2 | GitHub Actions: 自动发布到 npm（tag 触发） | `[x]` | `.github/workflows/publish.yml`，使用 Trusted Publishing (OIDC) |
+| 4.3.2 | GitHub Actions: 自动发布到 npm（tag 触发） | `[x]` | `.github/workflows/publish.yml`，需在仓库设置 `NPM_TOKEN` secret |
 | 4.3.3 | GitHub Actions: 自动生成 CHANGELOG | `[ ]` | |
 
 ### 4.4 发布 1.0.0
@@ -283,22 +283,20 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 | **npm 账号** | 用户自有账号，已启用 2FA |
 | **发布方式** | 需要 `--otp` 或 bypass-2fa token |
 
-### 发布方式：Trusted Publishing（推荐）
+### 发布方式：GitHub Actions + npm token
 
-**不再需要长期 token。** npm 支持通过 GitHub OIDC 进行可信发布：
-
-1. 访问 https://www.npmjs.com/settings/{用户名}/tokens → **Trusted Publishing**
-2. 添加 GitHub 仓库（`OpenClaw/claw-plugin-init`），选择包范围
-3. 之后发布流程：
+1. 访问 https://www.npmjs.com/settings/tokens
+2. 点击 **Generate New Token** → **Automation Token**（不过期）
+3. 复制 token
+4. 打开 GitHub 仓库 → Settings → Secrets and variables → Actions → **New repository secret**
+   - Name: `NPM_TOKEN`
+   - Value: 粘贴 token
+5. 之后发布流程：
 
 ```bash
-# 本地打 tag 并推送即可自动发布
 git tag v0.x.x
 git push --tags
 ```
-
-GitHub Actions 会自动运行测试 → 构建 → `npm publish --provenance`。  
-`--provenance` 还会在包上生成可验证的来源证明（provenance attestation）。
 ```
 
 > ⚠️ Token 过期后需要重新生成。去 https://www.npmjs.com/settings/xxx/tokens 创建新 token。
