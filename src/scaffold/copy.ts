@@ -12,7 +12,7 @@ export type TemplateVars = {
   pluginSdkVersion: string;
 };
 
-// 需要重命名的特殊文件（_前缀 → .前缀）
+// Files to rename (underscore prefix → dot prefix)
 const RENAME_FILES: Record<string, string | undefined> = {
   _gitignore: '.gitignore',
   _npmrc: '.npmrc',
@@ -21,7 +21,7 @@ const RENAME_FILES: Record<string, string | undefined> = {
 };
 
 /**
- * 递归复制模板目录，替换所有 {{变量}} 占位符
+ * Recursively copy the template directory, replacing all {{variable}} placeholders
  */
 export async function scaffold(
   templateDir: string,
@@ -50,7 +50,7 @@ export async function scaffold(
         content = content.replaceAll(`{{${key}}}`, value);
       }
 
-      // 特殊处理 package.json：JSON 解析后只改 name 字段
+      // Special handling for package.json: parse JSON, update name and description
       if (entry.name === 'package.json') {
         try {
           const pkg = JSON.parse(content);

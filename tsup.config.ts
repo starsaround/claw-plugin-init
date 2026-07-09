@@ -7,9 +7,9 @@ export default defineConfig({
   clean: true,
   dts: false,
   bundle: true,
-  // 将所有依赖内联到单个 JS 文件，实现零依赖启动
+  // Bundle all dependencies into a single JS file for zero-dependency startup
   noExternal: ['mri', '@clack/prompts', '@clack/core', 'picocolors'],
-  // banner 添加 shebang
+  // Add shebang for CLI
   banner: {
     js: '#!/usr/bin/env node',
   },
