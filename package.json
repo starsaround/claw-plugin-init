@@ -1,6 +1,6 @@
 {
   "name": "claw-plugin-init",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Scaffold OpenClaw Plugin projects with one command",
   "type": "module",
   "bin": {

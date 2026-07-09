@@ -31,10 +31,22 @@ yarn create claw-plugin-init
 npx claw-plugin-init my-plugin --type tool-plugin --no-install
 ```
 
+### Skip all prompts
+
+```bash
+npx claw-plugin-init my-plugin --yes
+```
+
 ### Scaffold in current directory
 
 ```bash
 npx claw-plugin-init . --force
+```
+
+### Preview only (dry run)
+
+```bash
+npx claw-plugin-init my-plugin --dry-run
 ```
 
 ---
@@ -45,7 +57,10 @@ npx claw-plugin-init . --force
 |------|-------------|
 | `--type`, `-t` | Plugin type: `tool-plugin` (default), `channel-plugin`, `provider-plugin`, `mcp-server` |
 | `--force`, `-f` | Overwrite existing directory |
+| `--yes`, `-y` | Skip all prompts, accept defaults |
 | `--no-install` | Skip dependency installation |
+| `--git` / `--no-git` | Initialize (or skip) a Git repository |
+| `--dry-run` | Preview actions without executing |
 | `--help`, `-h` | Show help |
 
 ---
@@ -57,7 +72,7 @@ npx claw-plugin-init . --force
 | Plugin type | Select plugin type | `tool-plugin` |
 | Project name | npm package name | interactive |
 | Display name | Human-readable name | package name |
-| Description | Short description of your plugin | (empty) |
+| Description | Short description of your plugin | `An OpenClaw plugin` |
 
 ---
 
@@ -66,15 +81,17 @@ npx claw-plugin-init . --force
 | Template | Status |
 |----------|--------|
 | `tool-plugin` | ✅ Available |
-| `channel-plugin` | 🚧 Coming soon |
-| `provider-plugin` | 🚧 Coming soon |
+| `channel-plugin` | ✅ Available |
 | `mcp-server` | ✅ Available |
+| `provider-plugin` | 🚧 Coming soon |
 
 ---
 
 ## What You Get
 
 ### Tool Plugin
+
+Register a tool callable by AI.
 
 ```
 my-plugin/
@@ -86,7 +103,23 @@ my-plugin/
 └── README.md             # Plugin docs
 ```
 
+### Channel Plugin
+
+Connect a messaging platform (Discord, Telegram, WeChat, etc.).
+
+```
+my-channel/
+├── src/
+│   └── index.ts          # Channel plugin entry point
+├── openclaw.plugin.json  # Plugin manifest
+├── package.json          # Dependencies & scripts
+├── tsconfig.json         # TypeScript config
+└── README.md             # Plugin docs
+```
+
 ### MCP Server
+
+Create a standalone MCP protocol service.
 
 ```
 my-server/
@@ -108,20 +141,29 @@ npm install        # Install dependencies (auto-done unless --no-install)
 npm run build      # Build your plugin
 ```
 
-For a **tool plugin**, register it with OpenClaw:
+Then depending on your plugin type:
 
-```bash
-openclaw plugins install ./my-plugin
-```
+- **Tool plugin** — register with OpenClaw:
 
-For an **MCP server**, start the server on stdio:
+  ```bash
+  openclaw plugins install ./my-plugin
+  ```
 
-```bash
-cd my-server
-npm start
-```
+- **Channel plugin** — register the channel:
 
-Then connect any MCP client (Claude Desktop, VS Code, etc.) by pointing it to the server entry point.
+  ```bash
+  openclaw plugins install ./my-channel
+  # Then configure the channel via openclaw config
+  ```
+
+- **MCP server** — start the server on stdio:
+
+  ```bash
+  cd my-server
+  npm start
+  ```
+
+  Then connect any MCP client (Claude Desktop, VS Code, etc.) by pointing it to the server entry point.
 
 ---
 

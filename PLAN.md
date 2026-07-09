@@ -118,7 +118,7 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 
 ---
 
-## Phase 2：体验完善
+## Phase 2：体验完善 ✅
 
 > **目标**：学习 create-vite 和 create-astro 的优秀做法，提升脚手架质量。
 
@@ -143,7 +143,7 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
-	| 2.3.1 | Channel Plugin 模板 | `[ ]` | 需要研究 `defineChannelPluginEntry` |
+	| 2.3.1 | Channel Plugin 模板 | `[x]` | v0.1.6, 2026-07-09 |
 | 2.3.2 | MCP Server 模板 | `[x]` | v0.1.4, 2026-07-09 |
 | 2.3.3 | Provider Plugin 模板 | `[ ]` | 需要研究 provider 实现接口 |
 
@@ -329,6 +329,7 @@ npx claw-plugin-init@latest test-verify --no-install
 | 2026-07-07 | M0: 环境就绪 | 6 项修正（版本检测静默、--force 清空、.gitignore、README）|
 | 2026-07-09 | M1: MVP 核心 ✅ | 命名 claw-plugin-init，发布 v0.1.1，端到端链路跑通 |
 | 2026-07-09 | M2: 体验完善 🔶 | MCP Server 模板完成（v0.1.4），CLI 全英文化，依赖结构调整
+| 2026-07-09 | M2: 体验完善 ✅ | Channel Plugin 模板完成（v0.1.6），Phase 2 全部完成 |
 
 ---
 
