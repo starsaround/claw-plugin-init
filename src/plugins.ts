@@ -19,7 +19,7 @@ export const PLUGIN_TYPES: PluginTypeConfig[] = [
     value: 'channel-plugin',
     label: 'Channel Plugin',
     hint: 'Connect a messaging platform (WeChat, Discord, etc.)',
-    available: false,
+    available: true,
   },
   {
     value: 'provider-plugin',

@@ -194,12 +194,19 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
           'npm run build  # Build the server',
           'npm start      # Start the MCP server on stdio',
         ]
-      : [
-          `cd ${relativePath}`,
-          'npm run dev    # Start dev mode',
-          'npm run build  # Build the plugin',
-          'clawhub package publish  # Publish to ClawHub',
-        ];
+      : pluginType === 'channel-plugin'
+        ? [
+            `cd ${relativePath}`,
+            'npm run dev    # Start dev mode',
+            'npm run build  # Build the plugin',
+            'openclaw plugins install ./dist  # Register the channel',
+          ]
+        : [
+            `cd ${relativePath}`,
+            'npm run dev    # Start dev mode',
+            'npm run build  # Build the plugin',
+            'clawhub package publish  # Publish to ClawHub',
+          ];
 
     p.note(nextSteps.join('\n'), 'Next steps');
   }

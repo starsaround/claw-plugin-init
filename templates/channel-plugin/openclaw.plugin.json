@@ -1,0 +1,13 @@
+{
+  "id": "{{pluginId}}",
+  "name": "{{pluginName}}",
+  "description": "{{pluginDescription}}",
+  "channels": ["{{pluginId}}"],
+  "activation": {
+    "onStartup": false
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}
