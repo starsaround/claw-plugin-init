@@ -1,0 +1,12 @@
+{
+  "id": "{{pluginId}}",
+  "name": "{{pluginName}}",
+  "description": "{{pluginDescription}}",
+  "activation": {
+    "onStartup": false
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false
+  }
+}
