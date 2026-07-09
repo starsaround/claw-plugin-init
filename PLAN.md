@@ -126,18 +126,18 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
-| 2.1.1 | 研究 create-vite 的 `FRAMEWORKS` 配置模式，看能否借鉴到插件类型管理 | `[ ]` | 参考 `reference-projects/create-vite/dist/index.js` |
-| 2.1.2 | 研究 create-vite 的 `write()` 函数和文件处理细节 | `[ ]` | |
-| 2.1.3 | 研究 create-vite 的 `formatTargetDir()` 路径处理 | `[ ]` | |
-| 2.1.4 | 研究 create-vite 的打包方案（如何将模板打包进 dist） | `[ ]` | |
+| 2.1.1 | 研究 create-vite 的 `FRAMEWORKS` 配置模式，看能否借鉴到插件类型管理 | `[x]` | 已实现 `src/plugins.ts` 集中配置 |
+| 2.1.2 | 研究 create-vite 的 `write()` 函数和文件处理细节 | `[—]` | 当前 scaffold 实现更简洁，无需模仿 |
+| 2.1.3 | 研究 create-vite 的 `formatTargetDir()` 路径处理 | `[—]` | 当前 path.resolve 处理已足够 |
+| 2.1.4 | 研究 create-vite 的打包方案（如何将模板打包进 dist） | `[—]` | tsup 的 `files` 字段已覆盖 |
 
 ### 2.2 参考 create-astro 的改进
 
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
-| 2.2.1 | 研究 create-astro 的 `p.group()` 用法，看看能否让交互流程更流畅 | `[ ]` | 参考 `reference-projects/create-astro/dist/index.js` |
-| 2.2.2 | 研究 create-astro 的 messages/shell 设计 | `[ ]` | |
-| 2.2.3 | 改进 intro/outro 的视觉风格 | `[ ]` | |
+| 2.2.1 | 研究 create-astro 的 `p.group()` 用法，看看能否让交互流程更流畅 | `[x]` | v0.1.5, 已实现 |
+| 2.2.2 | 研究 create-astro 的 messages/shell 设计 | `[—]` | 当前设计已满足，暂不需要跟进 |
+| 2.2.3 | 改进 intro/outro 的视觉风格 | `[x]` | 增加了 picocolors 颜色
 
 ### 2.3 新增模板
 
@@ -151,9 +151,9 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 
 | 编号 | 任务 | 状态 | 备注 |
 |------|------|------|------|
-| 2.4.1 | 支持 `npx create-claw-app my-plugin --type tool-plugin` 非交互式创建 | `[ ]` | |
-| 2.4.2 | 支持 `npx create-claw-app . --force` 在当前目录创建 | `[ ]` | |
-| 2.4.3 | 支持 `--template-version` 指定模板版本 | `[ ]` | 可选 |
+| 2.4.1 | 支持 `--yes`/`-y` 跳过所有提示，支持 `--type` 指定类型 | `[x]` | v0.1.5 |
+| 2.4.2 | 支持 `.` 在当前目录创建 + `--force` 覆盖 | `[x]` | |
+| 2.4.3 | 支持 `--template-version` 指定模板版本 | `[ ]` | 可选，按需
 
 ### 2.5 错误处理强化
 
@@ -165,9 +165,9 @@ Phase 4: 质量打磨 ─── 第 13-16 天
 | 2.5.4 | Ctrl+C 中断时的优雅退出 | `[ ]` | |
 
 **Phase 2 验收标准**：
-- [ ] 至少 2 个模板可用（tool-plugin + 另一个）
-- [ ] 非交互式参数完整
-- [ ] 从 create-vite/astro 至少采纳 3 个改进
+- [x] 至少 2 个模板可用（tool-plugin + mcp-server）
+- [x] 非交互式参数完整（--yes, --type, --force, --no-install, --git, --dry-run）
+- [x] 从 create-vite/astro 至少采纳 3 个改进
 
 ---
 
