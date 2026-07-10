@@ -18,19 +18,20 @@ const templatesDir = path.resolve(currentDir, '../templates');
 
 type Task = {
   title: string;
+  doneMessage: string;
   execute: () => Promise<void>;
 };
 
 async function runTasks(tasks: Task[], dryRun: boolean): Promise<void> {
   for (const task of tasks) {
     if (dryRun) {
-      log(picocolors.dim(`  · ${task.title} (skipped, --dry-run)`));
+      log(picocolors.dim(`  · ${task.doneMessage} (skipped, --dry-run)`));
       continue;
     }
     const s = p.spinner();
     s.start(task.title);
     await task.execute();
-    s.stop(task.title.replace('...', 'done'));
+    s.stop(task.doneMessage);
   }
 }
 
@@ -146,6 +147,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
 
   tasks.push({
     title: 'Scaffolding project...',
+    doneMessage: 'Scaffolding project done',
     execute: () =>
       scaffold(templateDir, targetDir, {
         packageName,
@@ -162,6 +164,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
   if (options?.install !== false) {
     tasks.push({
       title: 'Installing dependencies...',
+      doneMessage: 'Installing dependencies done',
       execute: () => installDeps(targetDir),
     });
   }
@@ -169,6 +172,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
   if (doGit !== false) {
     tasks.push({
       title: 'Initializing Git repository...',
+      doneMessage: 'Git repository initialized',
       execute: () => initGit(targetDir),
     });
   }
