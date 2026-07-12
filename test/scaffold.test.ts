@@ -21,18 +21,40 @@ const templateDir = path.join(testDir, 'template');
 const outputDir = path.join(testDir, 'output');
 
 beforeEach(() => {
-  // Create template structure
   fs.mkdirSync(path.join(templateDir, 'src'), { recursive: true });
-  fs.writeFileSync(path.join(templateDir, 'package.json'), JSON.stringify({
-    name: '{{packageName}}',
-    description: '{{pluginDescription}}',
-    dependencies: { typebox: '1.1.39' },
-    devDependencies: { openclaw: '>={{openclawVersion}}' },
-  }, null, 2) + '\n');
-  fs.writeFileSync(path.join(templateDir, 'src/index.ts'), `// {{pluginName}} - {{pluginDescription}}
+  fs.writeFileSync(
+    path.join(templateDir, 'package.json'),
+    JSON.stringify(
+      {
+        name: '{{packageName}}',
+        description: '{{pluginDescription}}',
+        dependencies: { typebox: '1.1.39' },
+        devDependencies: { openclaw: '>={{openclawVersion}}' },
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+  fs.writeFileSync(
+    path.join(templateDir, 'openclaw.plugin.json'),
+    JSON.stringify(
+      {
+        id: '{{pluginId}}',
+        name: '{{pluginName}}',
+        description: '{{pluginDescription}}',
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+  fs.writeFileSync(
+    path.join(templateDir, 'src/index.ts'),
+    `// {{pluginName}} - {{pluginDescription}}
 const name = "{{pluginName}}";
 const id = "{{pluginId}}";
-`);
+const description = '{{pluginDescription}}';
+`,
+  );
   fs.writeFileSync(path.join(templateDir, '_gitignore'), 'node_modules\ndist\n');
   fs.writeFileSync(path.join(templateDir, 'README.md'), '# {{pluginName}}\n\n{{pluginDescription}}\n');
 });
@@ -83,12 +105,38 @@ describe('scaffold', () => {
 
     const pkg = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json'), 'utf-8'));
     expect(pkg.name).toBe('test-package');
-    // description should come from variable substitution
     expect(pkg.description).toBe('A test plugin');
-    // JSON structure should be valid
     expect(pkg.dependencies?.typebox).toBe('1.1.39');
-    // Version variable should be substituted in JSON values
     expect(pkg.devDependencies?.openclaw).toBe('>=2026.6.11');
+  });
+
+  it('escapes user-provided text in JSON and source string literals', async () => {
+    const specialVars = {
+      ...vars,
+      pluginName: 'A "quoted" plugin',
+      pluginDescription: "Line one\nLine two's ${value} \\ path",
+      toolDescription: "Line one\nLine two's ${value} \\ path",
+    };
+
+    await scaffold(templateDir, outputDir, specialVars);
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json'), 'utf-8'));
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(outputDir, 'openclaw.plugin.json'), 'utf-8'),
+    );
+    const source = fs.readFileSync(path.join(outputDir, 'src/index.ts'), 'utf-8');
+
+    expect(pkg.description).toBe(specialVars.pluginDescription);
+    expect(manifest.name).toBe(specialVars.pluginName);
+    expect(manifest.description).toBe(specialVars.pluginDescription);
+    expect(source).toContain('A \\"quoted\\" plugin');
+    expect(source).toContain("Line one\\nLine two\\'s ${value} \\\\ path");
+  });
+
+  it('throws when a JSON template is invalid', async () => {
+    fs.writeFileSync(path.join(templateDir, 'invalid.json'), '{ invalid json');
+
+    await expect(scaffold(templateDir, outputDir, vars)).rejects.toThrow('Invalid JSON template');
   });
 
   it('handles empty template directory', async () => {
@@ -101,7 +149,6 @@ describe('scaffold', () => {
   });
 
   it('preserves nested directory structure', async () => {
-    // Create a deeper nested structure
     fs.mkdirSync(path.join(templateDir, 'nested/deep/path'), { recursive: true });
     fs.writeFileSync(path.join(templateDir, 'nested/deep/path/data.txt'), '{{packageName}}');
 
