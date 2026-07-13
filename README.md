@@ -1,6 +1,6 @@
 # claw-plugin-init <a href="https://npmjs.com/package/claw-plugin-init"><img src="https://img.shields.io/npm/v/claw-plugin-init" alt="npm package"></a>
 
-Scaffold [OpenClaw](https://openclaw.ai) Plugin projects with one command.
+Scaffold [OpenClaw](https://openclaw.ai) plugin projects with one command.
 
 ```bash
 npx claw-plugin-init my-plugin
@@ -82,8 +82,8 @@ npx claw-plugin-init my-plugin --dry-run
 |----------|--------|
 | `tool-plugin` | ✅ Available |
 | `channel-plugin` | ✅ Available |
+| `provider-plugin` | ✅ Available |
 | `mcp-server` | ✅ Available |
-| `provider-plugin` | 🚧 Coming soon |
 
 ---
 
@@ -93,7 +93,7 @@ npx claw-plugin-init my-plugin --dry-run
 
 Register a tool callable by AI.
 
-```
+```text
 my-plugin/
 ├── src/
 │   └── index.ts          # Plugin entry point (register tools)
@@ -105,9 +105,9 @@ my-plugin/
 
 ### Channel Plugin
 
-Connect a messaging platform (Discord, Telegram, WeChat, etc.).
+Connect a messaging platform such as Discord, Telegram, or WeChat.
 
-```
+```text
 my-channel/
 ├── src/
 │   └── index.ts          # Channel plugin entry point
@@ -117,11 +117,33 @@ my-channel/
 └── README.md             # Plugin docs
 ```
 
+### Provider Plugin
+
+Integrate a model provider with API-key authentication and a starter model catalog.
+
+```text
+my-provider/
+├── src/
+│   └── index.ts          # Provider definition and model catalog
+├── openclaw.plugin.json  # Provider setup and auth manifest
+├── package.json          # Dependencies & scripts
+├── tsconfig.json         # TypeScript config
+└── README.md             # Provider configuration guide
+```
+
+The generated environment variable is portable across shells. For a project named `my-provider`, it is:
+
+```bash
+export MY_PROVIDER_API_KEY=your-api-key
+```
+
+Before publishing, update the generated `baseUrl`, protocol adapter, and model catalog in `src/index.ts`.
+
 ### MCP Server
 
 Create a standalone MCP protocol service.
 
-```
+```text
 my-server/
 ├── src/
 │   └── index.ts          # MCP server entry point (stdio transport)
@@ -137,40 +159,52 @@ my-server/
 
 ```bash
 cd my-plugin
-npm install        # Install dependencies (auto-done unless --no-install)
-npm run build      # Build your plugin
+npm install        # Installed automatically unless --no-install is used
+npm run lint       # Type-check the generated project
+npm run build      # Build the generated project
 ```
 
 Then depending on your plugin type:
 
-- **Tool plugin** — register with OpenClaw:
+- **Tool plugin** — register or publish it:
 
   ```bash
-  openclaw plugins install ./my-plugin
+  openclaw plugins install ./dist
+  # or
+  clawhub package publish
   ```
 
 - **Channel plugin** — register the channel:
 
   ```bash
-  openclaw plugins install ./my-channel
+  openclaw plugins install ./dist
   # Then configure the channel via openclaw config
+  ```
+
+- **Provider plugin** — configure credentials and register it:
+
+  ```bash
+  export MY_PROVIDER_API_KEY=your-api-key
+  openclaw plugins install ./dist
   ```
 
 - **MCP server** — start the server on stdio:
 
   ```bash
-  cd my-server
   npm start
   ```
 
-  Then connect any MCP client (Claude Desktop, VS Code, etc.) by pointing it to the server entry point.
+  Then connect an MCP client by pointing it to the generated server entry point.
 
 ---
 
-## Requirements
+## Compatibility
 
 - Node.js 22+
-- npm / pnpm / yarn
+- npm, pnpm, or yarn
+- The scaffold targets the current OpenClaw and plugin SDK versions available from npm.
+- When registry lookup is unavailable, a tested fallback version is used.
+- If an older local OpenClaw CLI is detected, the command prints an upgrade warning.
 
 ---
 
