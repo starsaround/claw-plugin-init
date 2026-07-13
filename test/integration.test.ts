@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -8,7 +8,6 @@ import { scaffold } from '../src/scaffold/copy.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
 const templatesDir = path.resolve(projectRoot, 'templates');
-
 const testDir = path.join(os.tmpdir(), 'claw-test-int-' + Date.now());
 
 const vars = {
@@ -18,20 +17,27 @@ const vars = {
   pluginDescription: 'Created by integration test',
   toolName: 'my_integration_test',
   toolDescription: 'Created by integration test',
+  providerEnvVar: 'MY_INTEGRATION_TEST_API_KEY',
   openclawVersion: '2026.6.11',
   pluginSdkVersion: '2026.6.11',
 };
 
-describe('tool-plugin template integration', () => {
-  const toolOutputDir = path.join(testDir, 'tool-output');
+const templateNames = [
+  'tool-plugin',
+  'channel-plugin',
+  'provider-plugin',
+  'mcp-server',
+] as const;
 
-  afterEach(() => {
-    fs.rmSync(testDir, { recursive: true, force: true });
-  });
+afterEach(() => {
+  fs.rmSync(testDir, { recursive: true, force: true });
+});
 
-  it('scaffolds tool-plugin with all expected files', async () => {
-    const toolTemplate = path.join(templatesDir, 'tool-plugin');
-    await scaffold(toolTemplate, toolOutputDir, vars);
+describe.each(templateNames)('%s template integration', (templateName) => {
+  const outputDir = path.join(testDir, templateName);
+
+  it('scaffolds all expected files with no unresolved variables', async () => {
+    await scaffold(path.join(templatesDir, templateName), outputDir, vars);
 
     const expectedFiles = [
       'package.json',
@@ -43,96 +49,78 @@ describe('tool-plugin template integration', () => {
     ];
 
     for (const file of expectedFiles) {
-      expect(fs.existsSync(path.join(toolOutputDir, file)), `Missing: ${file}`).toBe(true);
+      expect(fs.existsSync(path.join(outputDir, file)), `Missing: ${file}`).toBe(true);
     }
-  });
 
-  it('produces valid package.json with correct name', async () => {
-    const toolTemplate = path.join(templatesDir, 'tool-plugin');
-    await scaffold(toolTemplate, toolOutputDir, vars);
-
-    const pkg = JSON.parse(fs.readFileSync(path.join(toolOutputDir, 'package.json'), 'utf-8'));
-    expect(pkg.name).toBe('my-integration-test');
-    expect(pkg.description).toBe('Created by integration test');
-    expect(pkg.dependencies?.typebox).toBeDefined();
-  });
-
-  it('substitutes all variables in openclaw.plugin.json', async () => {
-    const toolTemplate = path.join(templatesDir, 'tool-plugin');
-    await scaffold(toolTemplate, toolOutputDir, vars);
-
-    const manifest = JSON.parse(fs.readFileSync(path.join(toolOutputDir, 'openclaw.plugin.json'), 'utf-8'));
-    expect(manifest.id).toBe('my-integration-test');
-    expect(manifest.name).toBe('My Integration Test');
-    expect(manifest.description).toBe('Created by integration test');
-  });
-
-  it('substitutes all variables in src/index.ts', async () => {
-    const toolTemplate = path.join(templatesDir, 'tool-plugin');
-    await scaffold(toolTemplate, toolOutputDir, vars);
-
-    const content = fs.readFileSync(path.join(toolOutputDir, 'src/index.ts'), 'utf-8');
-    expect(content).toContain('my_integration_test');
-    expect(content).toContain('My Integration Test');
-    expect(content).toContain('Created by integration test');
-    expect(content).not.toContain('{{');
-  });
-
-  it('has no unsubstituted template variables in any file', async () => {
-    const toolTemplate = path.join(templatesDir, 'tool-plugin');
-    await scaffold(toolTemplate, toolOutputDir, vars);
-
-    const files = getAllFiles(toolOutputDir);
-    for (const file of files) {
+    for (const file of getAllFiles(outputDir)) {
       const content = fs.readFileSync(file, 'utf-8');
       expect(content, `Unsubstituted vars in ${file}`).not.toMatch(/\{\{/);
     }
+  });
+
+  it('produces valid package and manifest JSON', async () => {
+    await scaffold(path.join(templatesDir, templateName), outputDir, vars);
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json'), 'utf-8'));
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(outputDir, 'openclaw.plugin.json'), 'utf-8'),
+    );
+
+    expect(pkg.name).toBe(vars.packageName);
+    expect(pkg.description).toBe(vars.pluginDescription);
+    expect(manifest.id).toBe(vars.pluginId);
+    expect(manifest.name).toBe(vars.pluginName);
+    expect(manifest.description).toBe(vars.pluginDescription);
   });
 });
 
-describe('mcp-server template integration', () => {
-  const mcpOutputDir = path.join(testDir, 'mcp-output');
+describe('template-specific contracts', () => {
+  it('tool plugin includes its tool dependency and registration', async () => {
+    const outputDir = path.join(testDir, 'tool-contract');
+    await scaffold(path.join(templatesDir, 'tool-plugin'), outputDir, vars);
 
-  afterEach(() => {
-    fs.rmSync(testDir, { recursive: true, force: true });
+    const pkg = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json'), 'utf-8'));
+    const source = fs.readFileSync(path.join(outputDir, 'src/index.ts'), 'utf-8');
+
+    expect(pkg.dependencies?.typebox).toBeDefined();
+    expect(source).toContain(vars.toolName);
   });
 
-  it('scaffolds mcp-server with all expected files', async () => {
-    const mcpTemplate = path.join(templatesDir, 'mcp-server');
-    await scaffold(mcpTemplate, mcpOutputDir, vars);
+  it('channel plugin keeps manifest and source channel IDs aligned', async () => {
+    const outputDir = path.join(testDir, 'channel-contract');
+    await scaffold(path.join(templatesDir, 'channel-plugin'), outputDir, vars);
 
-    const expectedFiles = [
-      'package.json',
-      'openclaw.plugin.json',
-      'tsconfig.json',
-      'README.md',
-      '.gitignore',
-      'src/index.ts',
-    ];
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(outputDir, 'openclaw.plugin.json'), 'utf-8'),
+    );
+    const source = fs.readFileSync(path.join(outputDir, 'src/index.ts'), 'utf-8');
 
-    for (const file of expectedFiles) {
-      expect(fs.existsSync(path.join(mcpOutputDir, file)), `Missing: ${file}`).toBe(true);
-    }
+    expect(manifest.channels).toEqual([vars.pluginId]);
+    expect(source).toContain(`id: "${vars.pluginId}"`);
   });
 
-  it('has MCP-specific dependencies in package.json', async () => {
-    const mcpTemplate = path.join(templatesDir, 'mcp-server');
-    await scaffold(mcpTemplate, mcpOutputDir, vars);
+  it('provider plugin uses one portable API-key environment variable everywhere', async () => {
+    const outputDir = path.join(testDir, 'provider-contract');
+    await scaffold(path.join(templatesDir, 'provider-plugin'), outputDir, vars);
 
-    const pkg = JSON.parse(fs.readFileSync(path.join(mcpOutputDir, 'package.json'), 'utf-8'));
+    const manifest = JSON.parse(
+      fs.readFileSync(path.join(outputDir, 'openclaw.plugin.json'), 'utf-8'),
+    );
+    const source = fs.readFileSync(path.join(outputDir, 'src/index.ts'), 'utf-8');
+    const readme = fs.readFileSync(path.join(outputDir, 'README.md'), 'utf-8');
+
+    expect(manifest.setup.providers[0].envVars).toEqual([vars.providerEnvVar]);
+    expect(source).toContain(vars.providerEnvVar);
+    expect(readme).toContain(`export ${vars.providerEnvVar}=your-api-key`);
+  });
+
+  it('MCP server includes the MCP SDK and excludes tool-plugin-only dependencies', async () => {
+    const outputDir = path.join(testDir, 'mcp-contract');
+    await scaffold(path.join(templatesDir, 'mcp-server'), outputDir, vars);
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(outputDir, 'package.json'), 'utf-8'));
     expect(pkg.dependencies?.['@modelcontextprotocol/sdk']).toBeDefined();
     expect(pkg.dependencies?.typebox).toBeUndefined();
-  });
-
-  it('has no unsubstituted template variables in any file', async () => {
-    const mcpTemplate = path.join(templatesDir, 'mcp-server');
-    await scaffold(mcpTemplate, mcpOutputDir, vars);
-
-    const files = getAllFiles(mcpOutputDir);
-    for (const file of files) {
-      const content = fs.readFileSync(file, 'utf-8');
-      expect(content, `Unsubstituted vars in ${file}`).not.toMatch(/\{\{/);
-    }
   });
 });
 
