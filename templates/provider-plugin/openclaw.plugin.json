@@ -10,7 +10,7 @@
     "providers": [
       {
         "id": "{{pluginId}}",
-        "envVars": ["{{pluginId}}_API_KEY"]
+        "envVars": ["{{providerEnvVar}}"]
       }
     ]
   },
