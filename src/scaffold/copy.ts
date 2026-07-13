@@ -8,6 +8,7 @@ export type TemplateVars = {
   pluginDescription: string;
   toolName: string;
   toolDescription: string;
+  providerEnvVar: string;
   openclawVersion: string;
   pluginSdkVersion: string;
 };
