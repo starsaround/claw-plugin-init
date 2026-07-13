@@ -2,6 +2,7 @@ import {
   defineChannelPluginEntry,
   type ChannelPlugin,
 } from "openclaw/plugin-sdk/channel-core";
+import type { OpenClawPluginDefinition } from "openclaw/plugin-sdk/plugin-entry";
 
 type ChannelAccount = {
   accountId: string;
@@ -36,9 +37,11 @@ const channelPlugin: ChannelPlugin<ChannelAccount> = {
   },
 };
 
-export default defineChannelPluginEntry({
+const pluginEntry: OpenClawPluginDefinition = defineChannelPluginEntry({
   id: "{{pluginId}}",
   name: "{{pluginName}}",
   description: "{{pluginDescription}}",
   plugin: channelPlugin,
 });
+
+export default pluginEntry;
