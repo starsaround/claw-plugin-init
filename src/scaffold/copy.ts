@@ -46,7 +46,10 @@ function replaceJsonValue(value: unknown, vars: TemplateVars): unknown {
 
   if (value && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, replaceJsonValue(item, vars)]),
+      Object.entries(value).map(([key, item]) => [
+        replaceVariables(key, vars),
+        replaceJsonValue(item, vars),
+      ]),
     );
   }
 
