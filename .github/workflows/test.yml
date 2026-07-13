@@ -52,8 +52,62 @@ jobs:
       - name: Verify CLI help
         run: node dist/index.js --help
 
-  scaffold-smoke:
-    name: Generated project smoke tests
+  template-smoke:
+    name: Template (${{ matrix.template }})
+    runs-on: ubuntu-latest
+    needs: quality
+
+    strategy:
+      fail-fast: false
+      matrix:
+        template: [tool-plugin, channel-plugin, provider-plugin, mcp-server]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI
+        run: pnpm build
+
+      - name: Generate template
+        run: |
+          dir="/tmp/claw-${{ matrix.template }}"
+          node dist/index.js "$dir" --type "${{ matrix.template }}" --no-install --no-git
+          test -f "$dir/package.json"
+          test -f "$dir/openclaw.plugin.json"
+          ! grep -R "{{" "$dir" --exclude-dir=node_modules
+
+      - name: Install generated project
+        run: pnpm --dir "/tmp/claw-${{ matrix.template }}" install --frozen-lockfile=false
+
+      - name: Lint generated project
+        run: pnpm --dir "/tmp/claw-${{ matrix.template }}" lint
+
+      - name: Build generated project
+        run: pnpm --dir "/tmp/claw-${{ matrix.template }}" build
+
+      - name: Verify provider credential consistency
+        if: matrix.template == 'provider-plugin'
+        run: |
+          grep -q 'CLAW_PROVIDER_PLUGIN_API_KEY' /tmp/claw-provider-plugin/src/index.ts
+          grep -q 'CLAW_PROVIDER_PLUGIN_API_KEY' /tmp/claw-provider-plugin/openclaw.plugin.json
+          grep -q 'CLAW_PROVIDER_PLUGIN_API_KEY' /tmp/claw-provider-plugin/README.md
+
+  cli-safety:
+    name: CLI safety regressions
     runs-on: ubuntu-latest
     needs: quality
 
@@ -76,25 +130,6 @@ jobs:
 
       - name: Build CLI
         run: pnpm build
-
-      - name: Generate and build every template
-        run: |
-          for type in tool-plugin channel-plugin provider-plugin mcp-server; do
-            dir="/tmp/claw-$type"
-            node dist/index.js "$dir" --type "$type" --no-install --no-git
-            test -f "$dir/package.json"
-            test -f "$dir/openclaw.plugin.json"
-            ! grep -R "{{" "$dir" --exclude-dir=node_modules
-            pnpm --dir "$dir" install --frozen-lockfile=false
-            pnpm --dir "$dir" lint
-            pnpm --dir "$dir" build
-          done
-
-      - name: Verify provider credential consistency
-        run: |
-          grep -q 'MY_PROVIDER_API_KEY' /tmp/claw-provider-plugin/src/index.ts
-          grep -q 'MY_PROVIDER_API_KEY' /tmp/claw-provider-plugin/openclaw.plugin.json
-          grep -q 'MY_PROVIDER_API_KEY' /tmp/claw-provider-plugin/README.md
 
       - name: Verify non-interactive names are normalized
         run: |
