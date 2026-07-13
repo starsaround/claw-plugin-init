@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { isValidPackageName, toValidPackageName } from '../src/utils/validation.js';
+import {
+  isValidPackageName,
+  toApiKeyEnvVar,
+  toValidPackageName,
+} from '../src/utils/validation.js';
 
 describe('isValidPackageName', () => {
   it('accepts simple valid names', () => {
@@ -76,5 +80,18 @@ describe('toValidPackageName', () => {
   it('falls back to my-plugin for empty results', () => {
     expect(toValidPackageName('')).toBe('my-plugin');
     expect(toValidPackageName('   ')).toBe('my-plugin');
+  });
+});
+
+describe('toApiKeyEnvVar', () => {
+  it('creates portable uppercase environment variable names', () => {
+    expect(toApiKeyEnvVar('my-provider')).toBe('MY_PROVIDER_API_KEY');
+    expect(toApiKeyEnvVar('@scope/provider')).toBe('SCOPE_PROVIDER_API_KEY');
+    expect(toApiKeyEnvVar('provider.name')).toBe('PROVIDER_NAME_API_KEY');
+  });
+
+  it('falls back to a safe generic prefix', () => {
+    expect(toApiKeyEnvVar('---')).toBe('PLUGIN_API_KEY');
+    expect(toApiKeyEnvVar('')).toBe('PLUGIN_API_KEY');
   });
 });
