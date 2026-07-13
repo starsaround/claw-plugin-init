@@ -1,55 +1,40 @@
-import { execSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 
-type PackageInfo = {
+export type PackageInfo = {
   openclawVersion: string;
   pluginSdkVersion: string;
 };
 
 const FALLBACK_VERSION = '2026.3.24-beta.2';
 
-// Simple in-memory cache to avoid repeated npm network calls
-let cachedInfo: PackageInfo | null = null;
-
-/**
- * Get the latest OpenClaw and SDK versions from npm.
- * Results are cached in memory for the lifetime of the process.
- * Falls back to a known stable version on network failure.
- */
-export async function getPackageInfo(): Promise<PackageInfo> {
-  if (cachedInfo) return cachedInfo;
-
-  try {
-    const openclawVersion = execSync('npm view openclaw version 2>/dev/null', {
-      encoding: 'utf-8',
-      timeout: 5000,
-    }).trim();
-
-    const pluginSdkVersion = execSync('npm view @openclaw/plugin-sdk version 2>/dev/null', {
-      encoding: 'utf-8',
-      timeout: 5000,
-    }).trim();
-
-    cachedInfo = { openclawVersion, pluginSdkVersion };
-    return cachedInfo;
-  } catch {
-    cachedInfo = {
-      openclawVersion: FALLBACK_VERSION,
-      pluginSdkVersion: FALLBACK_VERSION,
-    };
-    return cachedInfo;
-  }
+function executableName(name: string): string {
+  return process.platform === 'win32' ? `${name}.cmd` : name;
 }
 
-/**
- * Check if OpenClaw is installed locally and return its version.
- * Returns null if OpenClaw is not found or the check fails.
- */
-export function getLocalOpenclawVersion(): string | null {
+function execFileText(command: string, args: string[], timeout: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      command,
+      args,
+      {
+        encoding: 'utf-8',
+        timeout,
+        windowsHide: true,
+      },
+      (error, stdout) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(stdout.trim());
+      },
+    );
+  });
+}
+
+async function queryPackageVersion(packageName: string): Promise<string | null> {
   try {
-    const version = execSync('openclaw --version 2>/dev/null', {
-      encoding: 'utf-8',
-      timeout: 3000,
-    }).trim();
+    const version = await execFileText(executableName('npm'), ['view', packageName, 'version'], 5000);
     return version || null;
   } catch {
     return null;
@@ -57,40 +42,92 @@ export function getLocalOpenclawVersion(): string | null {
 }
 
 /**
- * Simple semver comparison. Returns:
- *  - negative if a < b
- *  0 if a === b
- *  positive if a > b
- *
- * Handles pre-release tags: "2026.6.11-beta.1" vs "2026.6.11"
- * A plain release is considered newer than its pre-release.
+ * Get the latest OpenClaw and SDK versions from npm.
+ * Queries run in parallel and fall back independently when the registry is unavailable.
  */
-export function compareVersions(a: string, b: string): number {
-  const aParts = parseVersion(a);
-  const bParts = parseVersion(b);
+export async function getPackageInfo(): Promise<PackageInfo> {
+  const [openclawVersion, pluginSdkVersion] = await Promise.all([
+    queryPackageVersion('openclaw'),
+    queryPackageVersion('@openclaw/plugin-sdk'),
+  ]);
 
-  for (let i = 0; i < 3; i++) {
-    const diff = aParts[i] - bParts[i];
+  return {
+    openclawVersion: openclawVersion ?? FALLBACK_VERSION,
+    pluginSdkVersion: pluginSdkVersion ?? FALLBACK_VERSION,
+  };
+}
+
+/**
+ * Check if OpenClaw is installed locally and return its version output.
+ * Returns null if OpenClaw is not found or the check fails.
+ */
+export async function getLocalOpenclawVersion(): Promise<string | null> {
+  try {
+    const version = await execFileText(executableName('openclaw'), ['--version'], 3000);
+    return version || null;
+  } catch {
+    return null;
+  }
+}
+
+type ParsedVersion = {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease: string[];
+};
+
+function parseVersion(input: string): ParsedVersion | null {
+  const match = input.match(
+    /(?:^|[^0-9A-Za-z])v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?=$|[^0-9A-Za-z.+-])/,
+  );
+  if (!match) return null;
+
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+    prerelease: match[4] ? match[4].split('.') : [],
+  };
+}
+
+function comparePrereleaseIdentifier(a: string, b: string): number {
+  const aNumeric = /^\d+$/.test(a);
+  const bNumeric = /^\d+$/.test(b);
+
+  if (aNumeric && bNumeric) return Number(a) - Number(b);
+  if (aNumeric !== bNumeric) return aNumeric ? -1 : 1;
+  return a.localeCompare(b);
+}
+
+/**
+ * Compare two SemVer-compatible version strings.
+ * Returns null when either input does not contain a valid major.minor.patch version.
+ */
+export function compareVersions(a: string, b: string): number | null {
+  const aVersion = parseVersion(a);
+  const bVersion = parseVersion(b);
+  if (!aVersion || !bVersion) return null;
+
+  for (const key of ['major', 'minor', 'patch'] as const) {
+    const diff = aVersion[key] - bVersion[key];
     if (diff !== 0) return diff;
   }
 
-  // Same major.minor.patch: pre-release is older than plain release
-  if (aParts[3] !== bParts[3]) return aParts[3] ? -1 : 1;
+  if (aVersion.prerelease.length === 0 && bVersion.prerelease.length === 0) return 0;
+  if (aVersion.prerelease.length === 0) return 1;
+  if (bVersion.prerelease.length === 0) return -1;
+
+  const count = Math.max(aVersion.prerelease.length, bVersion.prerelease.length);
+  for (let index = 0; index < count; index += 1) {
+    const aPart = aVersion.prerelease[index];
+    const bPart = bVersion.prerelease[index];
+    if (aPart === undefined) return -1;
+    if (bPart === undefined) return 1;
+
+    const diff = comparePrereleaseIdentifier(aPart, bPart);
+    if (diff !== 0) return diff;
+  }
 
   return 0;
-}
-
-type ParsedVersion = [number, number, number, number]; // major, minor, patch, isPreRelease
-
-function parseVersion(version: string): ParsedVersion {
-  const clean = version.replace(/^v/, '');
-  const preReleaseIndex = clean.search(/[-\s]/);
-  const core = preReleaseIndex >= 0 ? clean.slice(0, preReleaseIndex) : clean;
-  const parts = core.split('.').map(Number);
-  return [
-    parts[0] || 0,
-    parts[1] || 0,
-    parts[2] || 0,
-    preReleaseIndex >= 0 ? 1 : 0, // 1 = pre-release, 0 = stable
-  ];
 }
