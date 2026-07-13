@@ -25,3 +25,18 @@ export function toValidPackageName(name: string): string {
     .replace(/^-|-$/g, '')
     || 'my-plugin';
 }
+
+/**
+ * Convert a package or plugin name into a portable API-key environment variable.
+ * Examples: my-provider -> MY_PROVIDER_API_KEY, @scope/provider -> SCOPE_PROVIDER_API_KEY.
+ */
+export function toApiKeyEnvVar(name: string): string {
+  const prefix = name
+    .trim()
+    .replace(/^@/, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase();
+
+  return `${prefix || 'PLUGIN'}_API_KEY`;
+}
