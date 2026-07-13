@@ -13,6 +13,7 @@ const vars = {
   pluginDescription: 'A test plugin',
   toolName: 'test_package',
   toolDescription: 'A test plugin',
+  providerEnvVar: 'TEST_PACKAGE_API_KEY',
   openclawVersion: '2026.6.11',
   pluginSdkVersion: '2026.6.11',
 };
