@@ -11,7 +11,8 @@ import { log, success } from '../utils/logger.js';
 import { getPackageInfo } from '../utils/package.js';
 import picocolors from 'picocolors';
 import { isInteractive } from '../utils/tty.js';
-import { PLUGIN_TYPES, getValidPluginTypes } from '../plugins.js';
+import { getValidPluginTypes } from '../plugins.js';
+import { toValidPackageName } from '../utils/validation.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const templatesDir = path.resolve(currentDir, '../templates');
@@ -30,8 +31,14 @@ async function runTasks(tasks: Task[], dryRun: boolean): Promise<void> {
     }
     const s = p.spinner();
     s.start(task.title);
-    await task.execute();
-    s.stop(task.doneMessage);
+    try {
+      await task.execute();
+      s.stop(task.doneMessage);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      s.stop(picocolors.red(message));
+      throw error;
+    }
   }
 }
 
@@ -39,6 +46,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
   const interactive = isInteractive() && !options?.yes;
   const doGit = options?.git ?? (interactive ? undefined : true);
   const dryRun = options?.dryRun ?? false;
+  const validPluginTypes = getValidPluginTypes();
 
   p.intro(picocolors.cyan(picocolors.bold(' claw-plugin-init')));
 
@@ -50,10 +58,10 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
       : path.resolve(process.cwd(), 'my-plugin');
 
   // --- Step 2: Check target directory ---
+  let shouldReplaceTarget = false;
   if (fs.existsSync(targetDir)) {
     if (options?.force) {
-      fs.rmSync(targetDir, { recursive: true, force: true });
-      fs.mkdirSync(targetDir, { recursive: true });
+      shouldReplaceTarget = true;
     } else if (interactive) {
       const overwrite = await p.confirm({
         message: `Directory ${path.basename(targetDir)} already exists. Overwrite?`,
@@ -63,8 +71,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
         p.cancel('Cancelled');
         process.exit(0);
       }
-      fs.rmSync(targetDir, { recursive: true, force: true });
-      fs.mkdirSync(targetDir, { recursive: true });
+      shouldReplaceTarget = true;
     } else {
       console.error(`Directory already exists: ${targetDir}. Use --force to overwrite.`);
       process.exit(1);
@@ -77,33 +84,34 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
   let pluginName: string;
   let pluginDescription: string;
 
-  if (interactive) {
-    // Validate --type if provided
-    if (options?.type && !PLUGIN_TYPES.some((t) => t.value === options.type)) {
-      console.error(`Invalid plugin type "${options.type}". Valid types: ${getValidPluginTypes().map((t) => t.value).join(', ')}`);
-      process.exit(1);
-    }
+  const requestedType = options?.type;
+  if (requestedType && !validPluginTypes.some((type) => type.value === requestedType)) {
+    console.error(
+      `Invalid or unavailable plugin type "${requestedType}". Valid types: ${validPluginTypes.map((type) => type.value).join(', ')}`,
+    );
+    process.exit(1);
+  }
 
+  if (interactive) {
     const values = await p.group(
       {
         pluginType: () =>
-          options?.type
-            ? Promise.resolve(options.type as PluginType)
+          requestedType
+            ? Promise.resolve(requestedType as PluginType)
             : p.select({
                 message: 'Select plugin type:',
-                options: PLUGIN_TYPES.map((t) => ({
-                  value: t.value,
-                  label: t.label,
-                  hint: t.hint,
+                options: validPluginTypes.map((type) => ({
+                  value: type.value,
+                  label: type.label,
+                  hint: type.hint,
                 })),
               }),
-        packageName: () =>
-          promptPackageName(path.basename(targetDir)),
+        packageName: () => promptPackageName(path.basename(targetDir)),
         pluginName: () =>
           p.text({
             message: 'Plugin display name:',
             defaultValue: path.basename(targetDir),
-            validate: (v) => (v ? undefined : 'Display name is required'),
+            validate: (value) => (value ? undefined : 'Display name is required'),
           }),
         pluginDescription: () =>
           p.text({
@@ -124,17 +132,12 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
     pluginName = values.pluginName as string;
     pluginDescription = values.pluginDescription as string;
   } else {
-    if (options?.type && !PLUGIN_TYPES.some((t) => t.value === options.type)) {
-      console.error(`Invalid plugin type "${options.type}". Valid types: ${getValidPluginTypes().map((t) => t.value).join(', ')}`);
-      process.exit(1);
-    }
-    pluginType = (options?.type as PluginType) ?? 'tool-plugin';
-    packageName = path.basename(targetDir);
+    pluginType = (requestedType as PluginType) ?? 'tool-plugin';
+    packageName = toValidPackageName(path.basename(targetDir));
     pluginName = packageName;
     pluginDescription = 'An OpenClaw plugin';
   }
 
-  // Validate template exists
   const templateDir = path.join(templatesDir, pluginType);
   if (!fs.existsSync(templateDir)) {
     console.error(`Template directory not found: ${templateDir}`);
@@ -143,7 +146,23 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
 
   // --- Step 4: Prepare tasks ---
   const tasks: Task[] = [];
-  const pkgInfo = await getPackageInfo();
+  const pkgInfo = dryRun
+    ? {
+        openclawVersion: 'latest',
+        pluginSdkVersion: 'latest',
+      }
+    : await getPackageInfo();
+
+  if (shouldReplaceTarget) {
+    tasks.push({
+      title: 'Preparing target directory...',
+      doneMessage: 'Target directory prepared',
+      execute: async () => {
+        fs.rmSync(targetDir, { recursive: true, force: true });
+        fs.mkdirSync(targetDir, { recursive: true });
+      },
+    });
+  }
 
   tasks.push({
     title: 'Scaffolding project...',
@@ -189,28 +208,28 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
   }
   log('');
 
-  // Only show next steps in non-dry-run mode
   if (!dryRun) {
-    const nextSteps = pluginType === 'mcp-server'
-      ? [
-          `cd ${relativePath}`,
-          'npm run dev    # Start dev mode',
-          'npm run build  # Build the server',
-          'npm start      # Start the MCP server on stdio',
-        ]
-      : pluginType === 'channel-plugin'
+    const nextSteps =
+      pluginType === 'mcp-server'
         ? [
             `cd ${relativePath}`,
             'npm run dev    # Start dev mode',
-            'npm run build  # Build the plugin',
-            'openclaw plugins install ./dist  # Register the channel',
+            'npm run build  # Build the server',
+            'npm start      # Start the MCP server on stdio',
           ]
-        : [
-            `cd ${relativePath}`,
-            'npm run dev    # Start dev mode',
-            'npm run build  # Build the plugin',
-            'clawhub package publish  # Publish to ClawHub',
-          ];
+        : pluginType === 'channel-plugin'
+          ? [
+              `cd ${relativePath}`,
+              'npm run dev    # Start dev mode',
+              'npm run build  # Build the plugin',
+              'openclaw plugins install ./dist  # Register the channel',
+            ]
+          : [
+              `cd ${relativePath}`,
+              'npm run dev    # Start dev mode',
+              'npm run build  # Build the plugin',
+              'clawhub package publish  # Publish to ClawHub',
+            ];
 
     p.note(nextSteps.join('\n'), 'Next steps');
   }

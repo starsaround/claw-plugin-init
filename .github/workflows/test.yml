@@ -19,6 +19,8 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -44,15 +46,30 @@ jobs:
       - name: Verify tool-plugin scaffold
         run: |
           node dist/index.js /tmp/test-tool --type tool-plugin --no-install
-          ls /tmp/test-tool/package.json
+          test -f /tmp/test-tool/package.json
 
       - name: Verify mcp-server scaffold
         run: |
           node dist/index.js /tmp/test-mcp --type mcp-server --no-install
-          ls /tmp/test-mcp/package.json
+          test -f /tmp/test-mcp/package.json
 
-      - name: Verify --yes and --dry-run
+      - name: Verify unavailable types are rejected
         run: |
-          node dist/index.js /tmp/test-yes --yes --no-install
-          ls /tmp/test-yes/package.json
-          node dist/index.js /tmp/test-dry --yes --no-install --dry-run 2>&1 | grep -q "skipped"
+          if node dist/index.js /tmp/test-provider --type provider-plugin --no-install; then
+            echo "provider-plugin should be rejected until its template is available"
+            exit 1
+          fi
+          test ! -e /tmp/test-provider
+
+      - name: Verify non-interactive names are normalized
+        run: |
+          node dist/index.js "/tmp/My Plugin" --yes --no-install --no-git
+          node -e "const pkg = require('/tmp/My Plugin/package.json'); if (pkg.name !== 'my-plugin') process.exit(1)"
+
+      - name: Verify dry-run never mutates an existing directory
+        run: |
+          mkdir -p /tmp/test-dry
+          printf 'keep me' > /tmp/test-dry/important.txt
+          node dist/index.js /tmp/test-dry --yes --force --no-install --no-git --dry-run 2>&1 | grep -q "skipped"
+          grep -q 'keep me' /tmp/test-dry/important.txt
+          test ! -f /tmp/test-dry/package.json
