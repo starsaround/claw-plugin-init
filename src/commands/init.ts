@@ -12,7 +12,7 @@ import { getPackageInfo, getLocalOpenclawVersion, compareVersions } from '../uti
 import picocolors from 'picocolors';
 import { isInteractive } from '../utils/tty.js';
 import { getValidPluginTypes } from '../plugins.js';
-import { toValidPackageName } from '../utils/validation.js';
+import { toApiKeyEnvVar, toValidPackageName } from '../utils/validation.js';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const templatesDir = path.resolve(currentDir, '../templates');
@@ -43,15 +43,21 @@ async function runTasks(tasks: Task[], dryRun: boolean): Promise<void> {
 }
 
 export async function init(projectName?: string, options?: CliOptions): Promise<void> {
+  const onSigint = () => process.exit(130);
+  process.once('SIGINT', onSigint);
+
+  try {
+    await runInit(projectName, options);
+  } finally {
+    process.off('SIGINT', onSigint);
+  }
+}
+
+async function runInit(projectName?: string, options?: CliOptions): Promise<void> {
   const interactive = isInteractive() && !options?.yes;
   const doGit = options?.git ?? (interactive ? undefined : true);
   const dryRun = options?.dryRun ?? false;
   const validPluginTypes = getValidPluginTypes();
-
-  // Global SIGINT handler: ensure graceful exit during non-prompt phases
-  // (@clack handles Ctrl+C internally during prompts via raw-mode keypress capture)
-  const onSigint = () => process.exit(0);
-  process.on('SIGINT', onSigint);
 
   p.intro(picocolors.cyan(picocolors.bold(' claw-plugin-init')));
 
@@ -143,6 +149,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
     pluginDescription = 'An OpenClaw plugin';
   }
 
+  const providerEnvVar = toApiKeyEnvVar(packageName);
   const templateDir = path.join(templatesDir, pluginType);
   if (!fs.existsSync(templateDir)) {
     console.error(`Template directory not found: ${templateDir}`);
@@ -180,6 +187,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
         pluginDescription,
         toolName: packageName.replace(/-/g, '_'),
         toolDescription: pluginDescription,
+        providerEnvVar,
         openclawVersion: pkgInfo.openclawVersion,
         pluginSdkVersion: pkgInfo.pluginSdkVersion,
       }),
@@ -215,11 +223,13 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
 
   // Check local OpenClaw version compatibility
   if (!dryRun) {
-    const localVersion = getLocalOpenclawVersion();
+    const localVersion = await getLocalOpenclawVersion();
     if (localVersion) {
-      const requiredVersion = pkgInfo.openclawVersion;
-      if (compareVersions(localVersion, requiredVersion) < 0) {
-        warning(`Local OpenClaw (${localVersion}) is older than the version this project targets (${requiredVersion}).`);
+      const comparison = compareVersions(localVersion, pkgInfo.openclawVersion);
+      if (comparison !== null && comparison < 0) {
+        warning(
+          `Local OpenClaw (${localVersion}) is older than the version this project targets (${pkgInfo.openclawVersion}).`,
+        );
         warning('Consider upgrading: npm install -g openclaw@latest');
         log('');
       }
@@ -247,7 +257,7 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
         `cd ${relativePath}`,
         'npm run dev    # Start dev mode',
         'npm run build  # Build the plugin',
-        `export ${packageName.toUpperCase().replace(/-/g, '_')}_API_KEY=your-key  # Set your API key`,
+        `export ${providerEnvVar}=your-key  # Set your API key`,
         'openclaw plugins install ./dist  # Register the provider',
       ];
     } else {
@@ -261,9 +271,6 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
 
     p.note(nextSteps.join('\n'), 'Next steps');
   }
-
-  // Clean up SIGINT handler
-  process.off('SIGINT', onSigint);
 
   p.outro(picocolors.green('Happy coding! ') + picocolors.cyan('🦀'));
 }
