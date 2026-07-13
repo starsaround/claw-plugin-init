@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "prepublish": "pnpm build",
+    "prepack": "pnpm build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
@@ -33,6 +33,18 @@
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/starsaround/claw-plugin-init.git"
+  },
+  "homepage": "https://github.com/starsaround/claw-plugin-init#readme",
+  "bugs": {
+    "url": "https://github.com/starsaround/claw-plugin-init/issues"
+  },
+  "packageManager": "pnpm@10.0.0",
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": [
     "openclaw",
