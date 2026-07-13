@@ -1,0 +1,33 @@
+{
+  "id": "{{pluginId}}",
+  "name": "{{pluginName}}",
+  "description": "{{pluginDescription}}",
+  "activation": {
+    "onStartup": false
+  },
+  "providers": ["{{pluginId}}"],
+  "setup": {
+    "providers": [
+      {
+        "id": "{{pluginId}}",
+        "envVars": ["{{pluginId}}_API_KEY"]
+      }
+    ]
+  },
+  "providerAuthChoices": [
+    {
+      "provider": "{{pluginId}}",
+      "method": "api-key",
+      "choiceId": "api-key",
+      "optionKey": "apiKey",
+      "cliFlag": "--api-key"
+    }
+  ],
+  "providerRequest": {
+    "providers": {
+      "{{pluginId}}": {
+        "family": "openai-family"
+      }
+    }
+  }
+}

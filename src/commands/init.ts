@@ -48,6 +48,11 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
   const dryRun = options?.dryRun ?? false;
   const validPluginTypes = getValidPluginTypes();
 
+  // Global SIGINT handler: ensure graceful exit during non-prompt phases
+  // (@clack handles Ctrl+C internally during prompts via raw-mode keypress capture)
+  const onSigint = () => process.exit(0);
+  process.on('SIGINT', onSigint);
+
   p.intro(picocolors.cyan(picocolors.bold(' claw-plugin-init')));
 
   // --- Step 1: Resolve project name ---
@@ -209,30 +214,43 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
   log('');
 
   if (!dryRun) {
-    const nextSteps =
-      pluginType === 'mcp-server'
-        ? [
-            `cd ${relativePath}`,
-            'npm run dev    # Start dev mode',
-            'npm run build  # Build the server',
-            'npm start      # Start the MCP server on stdio',
-          ]
-        : pluginType === 'channel-plugin'
-          ? [
-              `cd ${relativePath}`,
-              'npm run dev    # Start dev mode',
-              'npm run build  # Build the plugin',
-              'openclaw plugins install ./dist  # Register the channel',
-            ]
-          : [
-              `cd ${relativePath}`,
-              'npm run dev    # Start dev mode',
-              'npm run build  # Build the plugin',
-              'clawhub package publish  # Publish to ClawHub',
-            ];
+    let nextSteps: string[];
+    if (pluginType === 'mcp-server') {
+      nextSteps = [
+        `cd ${relativePath}`,
+        'npm run dev    # Start dev mode',
+        'npm run build  # Build the server',
+        'npm start      # Start the MCP server on stdio',
+      ];
+    } else if (pluginType === 'channel-plugin') {
+      nextSteps = [
+        `cd ${relativePath}`,
+        'npm run dev    # Start dev mode',
+        'npm run build  # Build the plugin',
+        'openclaw plugins install ./dist  # Register the channel',
+      ];
+    } else if (pluginType === 'provider-plugin') {
+      nextSteps = [
+        `cd ${relativePath}`,
+        'npm run dev    # Start dev mode',
+        'npm run build  # Build the plugin',
+        `export ${packageName.toUpperCase().replace(/-/g, '_')}_API_KEY=your-key  # Set your API key`,
+        'openclaw plugins install ./dist  # Register the provider',
+      ];
+    } else {
+      nextSteps = [
+        `cd ${relativePath}`,
+        'npm run dev    # Start dev mode',
+        'npm run build  # Build the plugin',
+        'clawhub package publish  # Publish to ClawHub',
+      ];
+    }
 
     p.note(nextSteps.join('\n'), 'Next steps');
   }
+
+  // Clean up SIGINT handler
+  process.off('SIGINT', onSigint);
 
   p.outro(picocolors.green('Happy coding! ') + picocolors.cyan('🦀'));
 }

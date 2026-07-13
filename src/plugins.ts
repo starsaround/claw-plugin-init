@@ -25,7 +25,7 @@ export const PLUGIN_TYPES: PluginTypeConfig[] = [
     value: 'provider-plugin',
     label: 'Provider Plugin',
     hint: 'Integrate a new model provider',
-    available: false,
+    available: true,
   },
   {
     value: 'mcp-server',

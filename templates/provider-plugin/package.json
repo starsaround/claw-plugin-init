@@ -1,0 +1,26 @@
+{
+  "name": "{{packageName}}",
+  "version": "0.1.0",
+  "description": "{{pluginDescription}}",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "dependencies": {
+    "openclaw": ">={{openclawVersion}}"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "scripts": {
+    "dev": "tsc --watch",
+    "build": "tsc",
+    "lint": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "keywords": ["openclaw", "provider", "plugin"],
+  "license": "MIT"
+}
