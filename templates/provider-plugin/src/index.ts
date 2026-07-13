@@ -1,6 +1,7 @@
 import { defineSingleProviderPluginEntry } from "openclaw/plugin-sdk/provider-entry";
+import type { OpenClawPluginDefinition } from "openclaw/plugin-sdk/plugin-entry";
 
-export default defineSingleProviderPluginEntry({
+const pluginEntry: OpenClawPluginDefinition = defineSingleProviderPluginEntry({
   id: "{{pluginId}}",
   name: "{{pluginName}}",
   description: "{{pluginDescription}}",
@@ -45,3 +46,5 @@ export default defineSingleProviderPluginEntry({
     },
   },
 });
+
+export default pluginEntry;
