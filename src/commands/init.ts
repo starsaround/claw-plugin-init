@@ -7,8 +7,8 @@ import type { PluginType } from '../prompts/type.js';
 import { promptProjectName, promptPackageName } from '../prompts/name.js';
 import { scaffold } from '../scaffold/copy.js';
 import { installDeps, initGit } from '../scaffold/cleanup.js';
-import { log, success } from '../utils/logger.js';
-import { getPackageInfo } from '../utils/package.js';
+import { log, success, warning } from '../utils/logger.js';
+import { getPackageInfo, getLocalOpenclawVersion, compareVersions } from '../utils/package.js';
 import picocolors from 'picocolors';
 import { isInteractive } from '../utils/tty.js';
 import { getValidPluginTypes } from '../plugins.js';
@@ -212,6 +212,19 @@ export async function init(projectName?: string, options?: CliOptions): Promise<
     success(`Project created at ./${relativePath}`);
   }
   log('');
+
+  // Check local OpenClaw version compatibility
+  if (!dryRun) {
+    const localVersion = getLocalOpenclawVersion();
+    if (localVersion) {
+      const requiredVersion = pkgInfo.openclawVersion;
+      if (compareVersions(localVersion, requiredVersion) < 0) {
+        warning(`Local OpenClaw (${localVersion}) is older than the version this project targets (${requiredVersion}).`);
+        warning('Consider upgrading: npm install -g openclaw@latest');
+        log('');
+      }
+    }
+  }
 
   if (!dryRun) {
     let nextSteps: string[];
