@@ -53,13 +53,10 @@ jobs:
           node dist/index.js /tmp/test-mcp --type mcp-server --no-install
           test -f /tmp/test-mcp/package.json
 
-      - name: Verify unavailable types are rejected
+      - name: Verify provider-plugin scaffold
         run: |
-          if node dist/index.js /tmp/test-provider --type provider-plugin --no-install; then
-            echo "provider-plugin should be rejected until its template is available"
-            exit 1
-          fi
-          test ! -e /tmp/test-provider
+          node dist/index.js /tmp/test-provider --type provider-plugin --no-install
+          test -f /tmp/test-provider/package.json
 
       - name: Verify non-interactive names are normalized
         run: |
