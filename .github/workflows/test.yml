@@ -94,7 +94,22 @@ jobs:
         run: pnpm --dir "/tmp/claw-${{ matrix.template }}" install --frozen-lockfile=false
 
       - name: Lint generated project
-        run: pnpm --dir "/tmp/claw-${{ matrix.template }}" lint
+        id: generated-lint
+        continue-on-error: true
+        run: pnpm --dir "/tmp/claw-${{ matrix.template }}" lint > "$RUNNER_TEMP/lint-${{ matrix.template }}.log" 2>&1
+
+      - name: Upload generated lint diagnostics
+        if: steps.generated-lint.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-${{ matrix.template }}
+          path: ${{ runner.temp }}/lint-${{ matrix.template }}.log
+
+      - name: Report generated lint errors
+        if: steps.generated-lint.outcome == 'failure'
+        run: |
+          cat "$RUNNER_TEMP/lint-${{ matrix.template }}.log"
+          exit 1
 
       - name: Build generated project
         run: pnpm --dir "/tmp/claw-${{ matrix.template }}" build
