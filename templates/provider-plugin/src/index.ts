@@ -7,12 +7,12 @@ export default defineSingleProviderPluginEntry({
   provider: {
     label: "{{pluginName}}",
     docsPath: "/docs/providers/{{pluginId}}",
-    envVars: ["{{pluginId}}_API_KEY"],
+    envVars: ["{{providerEnvVar}}"],
     auth: [
       {
         optionKey: "apiKey",
         flagName: "--api-key",
-        envVar: "{{pluginId}}_API_KEY",
+        envVar: "{{providerEnvVar}}",
         promptMessage: "Enter your {{pluginName}} API key",
         label: "API Key",
         hint: "Paste your API key from the provider dashboard",
