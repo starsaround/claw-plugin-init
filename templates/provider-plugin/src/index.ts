@@ -6,16 +6,18 @@ export default defineSingleProviderPluginEntry({
   description: "{{pluginDescription}}",
   provider: {
     label: "{{pluginName}}",
-    docsPath: "/docs/providers/{{pluginId}}",
+    docsPath: "/providers/{{pluginId}}",
     envVars: ["{{providerEnvVar}}"],
     auth: [
       {
+        methodId: "api-key",
         optionKey: "apiKey",
         flagName: "--api-key",
         envVar: "{{providerEnvVar}}",
         promptMessage: "Enter your {{pluginName}} API key",
         label: "API Key",
         hint: "Paste your API key from the provider dashboard",
+        defaultModel: "{{pluginId}}/example-model-v1",
       },
     ],
     catalog: {
@@ -26,9 +28,16 @@ export default defineSingleProviderPluginEntry({
           {
             id: "example-model-v1",
             name: "Example Model V1",
+            reasoning: false,
+            input: ["text"],
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+            },
             contextWindow: 128000,
             maxTokens: 4096,
-            input: ["text"],
           },
         ],
       }),
