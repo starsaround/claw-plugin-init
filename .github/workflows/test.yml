@@ -6,13 +6,22 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  quality:
+    name: Quality (${{ matrix.os }}, Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
 
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node-version: [22]
+        include:
+          - os: ubuntu-latest
+            node-version: 24
 
     steps:
       - uses: actions/checkout@v4
@@ -20,16 +29,16 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.0.0
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
+          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
@@ -43,20 +52,49 @@ jobs:
       - name: Verify CLI help
         run: node dist/index.js --help
 
-      - name: Verify tool-plugin scaffold
-        run: |
-          node dist/index.js /tmp/test-tool --type tool-plugin --no-install
-          test -f /tmp/test-tool/package.json
+  scaffold-smoke:
+    name: Generated project smoke tests
+    runs-on: ubuntu-latest
+    needs: quality
 
-      - name: Verify mcp-server scaffold
-        run: |
-          node dist/index.js /tmp/test-mcp --type mcp-server --no-install
-          test -f /tmp/test-mcp/package.json
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Verify provider-plugin scaffold
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build CLI
+        run: pnpm build
+
+      - name: Generate and build every template
         run: |
-          node dist/index.js /tmp/test-provider --type provider-plugin --no-install
-          test -f /tmp/test-provider/package.json
+          for type in tool-plugin channel-plugin provider-plugin mcp-server; do
+            dir="/tmp/claw-$type"
+            node dist/index.js "$dir" --type "$type" --no-install --no-git
+            test -f "$dir/package.json"
+            test -f "$dir/openclaw.plugin.json"
+            ! grep -R "{{" "$dir" --exclude-dir=node_modules
+            pnpm --dir "$dir" install --frozen-lockfile=false
+            pnpm --dir "$dir" lint
+            pnpm --dir "$dir" build
+          done
+
+      - name: Verify provider credential consistency
+        run: |
+          grep -q 'MY_PROVIDER_API_KEY' /tmp/claw-provider-plugin/src/index.ts
+          grep -q 'MY_PROVIDER_API_KEY' /tmp/claw-provider-plugin/openclaw.plugin.json
+          grep -q 'MY_PROVIDER_API_KEY' /tmp/claw-provider-plugin/README.md
 
       - name: Verify non-interactive names are normalized
         run: |
